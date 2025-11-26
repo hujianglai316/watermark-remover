@@ -90,7 +90,10 @@ export default function WatermarkRemover() {
 
   // 调用 API
   const handleRemoveWatermark = async () => {
-    if (!canvasRef.current || !selectedImage) return;
+    if (!canvasRef.current || !selectedImage) {
+      alert("画布尚未就绪，请稍后再试");
+      return;
+    }
 
     setIsProcessing(true);
     setLoadingMessageIndex(0);
@@ -282,15 +285,16 @@ export default function WatermarkRemover() {
                 <img
                   src={selectedImage}
                   alt="Original"
-                  className="absolute inset-0 w-full h-full object-contain pointer-events-none z-0"
+                  className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none z-0"
                 />
-                <div className="absolute inset-0 z-10 opacity-60">
+                <div className="absolute inset-0 z-10 opacity-80 pointer-events-none select-none">
                   <ReactSketchCanvas
                     ref={canvasRef}
                     strokeWidth={brushSize}
-                    strokeColor="white"
+                    strokeColor="rgba(255,255,255,0.95)"
                     canvasColor="transparent"
-                    className="w-full h-full"
+                    className="w-full h-full pointer-events-auto"
+                    style={{ width: '100%', height: '100%' }}
                   />
                 </div>
               </div>
