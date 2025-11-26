@@ -244,40 +244,39 @@ export default function WatermarkRemover() {
               {/* 核心修复区：这里是重点修改的地方
                 1. inline-block: 容器大小由图片撑开
                 2. onLoad: 图片加载完再设置 imageLoaded=true
-                3. conditional rendering: 画板只有在 imageLoaded 为 true 时才渲染
+                3. ReactSketchCanvas: 直接放在图片上层，使用 position: absolute
               */}
-              <div className="relative w-full flex justify-center bg-black/20 rounded-2xl overflow-hidden border border-white/5 p-1">
-                <div className="relative inline-block max-w-full align-middle">
-                  {/* 底图 */}
+              <div className="relative w-full flex justify-center bg-black/20 rounded-2xl overflow-hidden border border-white/5">
+                <div className="relative inline-block max-w-full">
                   <img
+                    ref={imageRef}
                     src={selectedImage}
                     alt="Original"
-                    onLoad={() => setImageLoaded(true)} // 关键：图片加载完通知React
-                    className="block max-h-[70vh] w-auto object-contain pointer-events-none select-none" 
+                    className="block max-h-[70vh] w-auto object-contain select-none"
                     draggable={false}
+                    onLoad={() => setImageLoaded(true)}
                   />
                   
-                  {/* 蒙版层 - 仅当图片加载完成后渲染 */}
-                  {imageLoaded && (
-                    <div className="absolute inset-0 z-10 cursor-crosshair touch-none">
+                  {/* 蒙版层 - 绝对定位覆盖在图片上 */}
+                  <div className="absolute inset-0 z-10 opacity-70 cursor-crosshair">
+                    {isCanvasReady && imageLoaded && (
                       <ReactSketchCanvas
                         ref={canvasRef}
-                        width="100%"  // 强制宽高
-                        height="100%"
                         strokeWidth={brushSize}
-                        strokeColor="white"
+                        strokeColor="white" // 遮罩颜色，白色代表选中
                         canvasColor="transparent"
-                        style={{ border: 'none' }}
+                        width={imageDimensions.width.toString()}
+                        height={imageDimensions.height.toString()}
+                        className="w-full h-full"
+                        style={{ 
+                          border: 'none',
+                          cursor: 'crosshair'
+                        }}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
                       />
-                    </div>
-                  )}
-                  
-                  {/* 加载中占位符 */}
-                  {!imageLoaded && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20">
-                      <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
 
