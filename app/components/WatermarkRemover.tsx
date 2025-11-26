@@ -12,7 +12,6 @@ const ReactSketchCanvas = dynamic(
   { ssr: false }
 );
 
-// 加载状态文字数组
 const loadingMessages = [
   "AI 正在识别像素...",
   "正在分析图像结构...",
@@ -35,7 +34,6 @@ export default function WatermarkRemover() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
 
-  // 加载消息循环
   useEffect(() => {
     if (isProcessing) {
       const interval = setInterval(() => {
@@ -45,7 +43,6 @@ export default function WatermarkRemover() {
     }
   }, [isProcessing]);
 
-  // 处理图片上传
   const handleImageUpload = useCallback((file: File) => {
     if (file && file.type.startsWith('image/')) {
       const reader = new FileReader();
@@ -64,7 +61,6 @@ export default function WatermarkRemover() {
     }
   };
 
-  // 拖拽处理
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -81,14 +77,12 @@ export default function WatermarkRemover() {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-    
     const file = e.dataTransfer.files[0];
     if (file) {
       handleImageUpload(file);
     }
   }, [handleImageUpload]);
 
-  // 调用 API
   const handleRemoveWatermark = async () => {
     if (!canvasRef.current || !selectedImage) {
       alert("画布尚未就绪，请稍后再试");
@@ -119,7 +113,7 @@ export default function WatermarkRemover() {
       }
     } catch (error) {
       console.error(error);
-      alert("请求发送失败");
+      alert("请求发送失败，请检查网络");
     } finally {
       setIsProcessing(false);
     }
@@ -132,23 +126,13 @@ export default function WatermarkRemover() {
     setSliderPosition(50);
   };
 
-  // 滑块控制
+  // 滑块控制逻辑
   const handleSliderMouseDown = (e: React.MouseEvent) => {
     setIsDraggingSlider(true);
     updateSliderPosition(e);
   };
 
-  const handleSliderMouseMove = (e: React.MouseEvent) => {
-    if (isDraggingSlider) {
-      updateSliderPosition(e);
-    }
-  };
-
-  const handleSliderMouseUp = () => {
-    setIsDraggingSlider(false);
-  };
-
-  const updateSliderPosition = (e: React.MouseEvent) => {
+  const updateSliderPosition = (e: React.MouseEvent | MouseEvent) => {
     if (!sliderRef.current) return;
     const rect = sliderRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -158,22 +142,11 @@ export default function WatermarkRemover() {
 
   useEffect(() => {
     if (isDraggingSlider) {
-      const handleMouseMove = (e: MouseEvent) => {
-        if (sliderRef.current) {
-          const rect = sliderRef.current.getBoundingClientRect();
-          const x = e.clientX - rect.left;
-          const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
-          setSliderPosition(percentage);
-        }
-      };
-
-      const handleMouseUp = () => {
-        setIsDraggingSlider(false);
-      };
-
+      const handleMouseMove = (e: MouseEvent) => updateSliderPosition(e);
+      const handleMouseUp = () => setIsDraggingSlider(false);
+      
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
-
       return () => {
         window.removeEventListener('mousemove', handleMouseMove);
         window.removeEventListener('mouseup', handleMouseUp);
@@ -182,18 +155,18 @@ export default function WatermarkRemover() {
   }, [isDraggingSlider]);
 
   return (
-    <div className="min-h-screen text-neutral-200 font-sans relative">
-      {/* 流动背景 */}
-      <div className="gradient-bg">
+    <div className="min-h-screen text-neutral-200 font-sans relative selection:bg-indigo-500/30">
+      {/* 背景 */}
+      <div className="gradient-bg pointer-events-none">
         <div className="gradient-orb"></div>
         <div className="gradient-orb"></div>
         <div className="gradient-orb"></div>
       </div>
 
-      {/* 顶部导航 */}
-      <header className="glass sticky top-0 z-50 relative">
+      {/* 导航 */}
+      <header className="glass sticky top-0 z-50 border-b border-white/10">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 select-none">
             <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-2 rounded-xl shadow-lg">
               <Eraser className="w-5 h-5 text-white" />
             </div>
@@ -201,19 +174,21 @@ export default function WatermarkRemover() {
               CleanPic AI
             </span>
           </div>
-          <div className="text-sm text-neutral-300 flex items-center gap-2">
+          <div className="text-sm text-neutral-400 flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-indigo-400" />
-            <span>免费 • 高清 • 无限</span>
+            <span className="hidden sm:inline">免费 • 高清 • 无限</span>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-12 relative z-10">
-        {/* 状态1: 上传框 */}
+        {/* 1. 上传区域 */}
         {!selectedImage && (
           <div
-            className={`glass-strong rounded-3xl min-h-[60vh] flex flex-col items-center justify-center relative overflow-hidden transition-all duration-300 ${
-              isDragging ? 'drag-active scale-105' : 'hover:scale-[1.02]'
+            className={`glass-strong rounded-3xl min-h-[60vh] flex flex-col items-center justify-center relative overflow-hidden transition-all duration-300 cursor-pointer border-2 ${
+              isDragging 
+                ? 'border-indigo-500 bg-indigo-500/10 scale-[1.01]' 
+                : 'border-dashed border-white/10 hover:border-white/20 hover:bg-white/5'
             }`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -228,216 +203,197 @@ export default function WatermarkRemover() {
               className="hidden"
             />
             
-            {/* 扫描线动画 */}
             {isDragging && <div className="scan-line"></div>}
             
-            <div className={`w-24 h-24 glass rounded-3xl flex items-center justify-center mb-8 transition-all duration-300 ${
-              isDragging ? 'icon-bounce bg-indigo-500/20' : 'hover:bg-indigo-500/10'
+            <div className={`w-24 h-24 glass rounded-3xl flex items-center justify-center mb-8 transition-all duration-500 ${
+              isDragging ? 'scale-110 rotate-12' : 'group-hover:scale-105'
             }`}>
-              <Upload className={`w-12 h-12 transition-colors ${
-                isDragging ? 'text-indigo-400' : 'text-neutral-400'
-              }`} />
+              <Upload className={`w-10 h-10 ${isDragging ? 'text-indigo-400' : 'text-neutral-400'}`} />
             </div>
             
-            <h2 className="text-3xl font-bold mb-3 bg-gradient-to-r from-white via-neutral-200 to-neutral-400 bg-clip-text text-transparent">
-              {isDragging ? '松开以上传' : '点击或拖拽上传图片'}
+            <h2 className="text-2xl md:text-3xl font-bold mb-3 text-white">
+              {isDragging ? '松开即可上传' : '点击或拖拽上传图片'}
             </h2>
-            <p className="text-neutral-400 text-lg">支持 JPG, PNG, WEBP (最大 5MB)</p>
-            
-            {isDragging && (
-              <div className="absolute inset-0 bg-indigo-500/5 pointer-events-none"></div>
-            )}
+            <p className="text-neutral-500">支持 JPG, PNG, WEBP (最大 10MB)</p>
           </div>
         )}
 
-        {/* 状态2: 操作界面 */}
+        {/* 2. 编辑与结果区域 */}
         {selectedImage && (
-          <div className="space-y-8">
-            {/* 编辑器区域 */}
-            <div className="glass-strong rounded-3xl p-6">
-              <div className="flex items-center justify-between mb-6">
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-500">
+            
+            {/* 编辑器卡片 */}
+            <div className="glass-strong rounded-3xl p-6 border border-white/10">
+              <div className="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4">
                 <h3 className="text-xl font-semibold flex items-center gap-3">
-                  <span className="w-3 h-3 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full animate-pulse"></span>
-                  <span className="bg-gradient-to-r from-white to-neutral-300 bg-clip-text text-transparent">
-                    涂抹水印区域
-                  </span>
+                  <div className="w-2 h-8 bg-gradient-to-b from-indigo-500 to-purple-600 rounded-full"></div>
+                  涂抹水印区域
                 </h3>
                 <div className="flex gap-2">
                   <button
                     onClick={() => canvasRef.current?.undo()}
-                    className="glass p-3 rounded-xl hover:bg-white/10 transition-all"
-                    title="撤销"
+                    className="glass px-4 py-2 rounded-xl hover:bg-white/10 transition-all flex items-center gap-2 text-sm"
                   >
-                    <Undo2 className="w-5 h-5" />
+                    <Undo2 className="w-4 h-4" /> 撤销
                   </button>
                   <button
                     onClick={handleReset}
-                    className="glass p-3 rounded-xl hover:bg-red-500/20 text-red-400 transition-all"
-                    title="关闭"
+                    className="glass px-4 py-2 rounded-xl hover:bg-red-500/20 text-red-400 transition-all flex items-center gap-2 text-sm border-red-500/20"
                   >
-                    <X className="w-5 h-5" />
+                    <X className="w-4 h-4" /> 关闭
                   </button>
                 </div>
               </div>
 
-              {/* 画板区域 */}
-              <div className="relative w-full aspect-[4/3] glass rounded-2xl overflow-hidden mb-6">
-                <img
-                  src={selectedImage}
-                  alt="Original"
-                  className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none z-0"
-                />
-                <div className="absolute inset-0 z-10 opacity-80 pointer-events-none select-none">
-                  <ReactSketchCanvas
-                    ref={canvasRef}
-                    strokeWidth={brushSize}
-                    strokeColor="rgba(255,255,255,0.95)"
-                    canvasColor="transparent"
-                    className="w-full h-full pointer-events-auto"
-                    style={{ width: '100%', height: '100%' }}
+              {/* 核心修复区：图片与Canvas容器 */}
+              {/* 关键修改：使用 inline-block 或 flex 让容器尺寸完全贴合图片尺寸 */}
+              <div className="relative w-full flex justify-center bg-black/20 rounded-2xl overflow-hidden border border-white/5">
+                <div className="relative inline-block max-w-full">
+                  {/* 底图 */}
+                  <img
+                    src={selectedImage}
+                    alt="Original"
+                    className="block max-h-[70vh] w-auto object-contain select-none"
+                    draggable={false}
                   />
+                  
+                  {/* 蒙版层 - 绝对定位覆盖在图片上 */}
+                  {/* 关键修复：移除了 pointer-events-none */}
+                  <div className="absolute inset-0 z-10 opacity-70 cursor-crosshair">
+                    <ReactSketchCanvas
+                      ref={canvasRef}
+                      strokeWidth={brushSize}
+                      strokeColor="white" // 遮罩颜色，白色代表选中
+                      canvasColor="transparent"
+                      className="w-full h-full"
+                      style={{ border: 'none' }}
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* 控制栏 */}
-              <div className="glass p-6 rounded-2xl flex items-center gap-6">
-                <div className="flex-1">
-                  <label className="text-xs text-neutral-400 mb-3 block uppercase font-semibold tracking-wider">
-                    画笔大小: {brushSize}px
-                  </label>
+              {/* 底部工具栏 */}
+              <div className="mt-6 glass p-4 rounded-2xl flex flex-col sm:flex-row items-center gap-6">
+                <div className="flex-1 w-full sm:w-auto">
+                  <div className="flex justify-between mb-2 text-xs font-medium text-neutral-400 uppercase tracking-wider">
+                    <span>画笔大小</span>
+                    <span>{brushSize}px</span>
+                  </div>
                   <input
                     type="range"
                     min="5"
-                    max="50"
+                    max="100"
                     value={brushSize}
                     onChange={(e) => setBrushSize(Number(e.target.value))}
-                    className="w-full h-2 bg-neutral-800/50 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                    className="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-indigo-500 hover:accent-indigo-400 transition-all"
                   />
                 </div>
                 <button
                   onClick={handleRemoveWatermark}
                   disabled={isProcessing}
-                  className={`px-8 py-4 rounded-xl font-semibold flex items-center gap-3 transition-all ${
+                  className={`w-full sm:w-auto px-8 py-3.5 rounded-xl font-bold text-white shadow-lg flex items-center justify-center gap-2 transition-all transform active:scale-95 ${
                     isProcessing
-                      ? 'glass text-neutral-400 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-600 hover:to-purple-700 shadow-lg hover:shadow-xl transform hover:scale-105'
+                      ? 'bg-neutral-700 cursor-wait opacity-80'
+                      : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 hover:shadow-indigo-500/25'
                   }`}
                 >
                   {isProcessing ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      <span>处理中...</span>
+                      处理中...
                     </>
                   ) : (
                     <>
                       <Check className="w-5 h-5" />
-                      <span>开始去除</span>
+                      开始去除
                     </>
                   )}
                 </button>
               </div>
             </div>
 
-            {/* 结果预览区域 */}
-            <div className="glass-strong rounded-3xl p-6">
+            {/* 结果展示区 */}
+            <div className="glass-strong rounded-3xl p-6 border border-white/10 min-h-[300px] flex flex-col">
               <h3 className="text-xl font-semibold mb-6 flex items-center gap-3">
-                <span className="bg-gradient-to-r from-white to-neutral-300 bg-clip-text text-transparent">
-                  处理结果
-                </span>
+                <div className="w-2 h-8 bg-gradient-to-b from-emerald-400 to-teal-600 rounded-full"></div>
+                处理结果
               </h3>
 
-              {processedImage ? (
-                <div className="relative">
-                  {/* 对比滑块容器 */}
-                  <div
-                    ref={sliderRef}
-                    className="slider-container relative w-full aspect-[4/3] rounded-2xl overflow-hidden glass"
-                    onMouseDown={handleSliderMouseDown}
-                    onMouseMove={handleSliderMouseMove}
-                    onMouseUp={handleSliderMouseUp}
-                    onMouseLeave={handleSliderMouseUp}
-                  >
-                    {/* 原图（左侧） */}
+              <div className="flex-1 flex items-center justify-center">
+                {processedImage ? (
+                  <div className="w-full space-y-6">
+                    {/* 对比滑块 */}
                     <div
-                      className="absolute inset-0"
-                      style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}
+                      ref={sliderRef}
+                      className="relative w-full max-h-[70vh] aspect-auto rounded-2xl overflow-hidden cursor-ew-resize group select-none shadow-2xl"
+                      onMouseDown={handleSliderMouseDown}
+                      onTouchStart={() => setIsDraggingSlider(true)} // 支持触摸
                     >
-                      <img
-                        src={selectedImage}
-                        alt="Original"
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
-
-                    {/* 处理后图片（右侧） */}
-                    <div
-                      className="absolute inset-0"
-                      style={{ clipPath: `inset(0 0 0 ${sliderPosition}%)` }}
-                    >
+                      {/* 处理后图片 (底层) */}
                       <img
                         src={processedImage}
                         alt="Processed"
-                        className="w-full h-full object-contain"
+                        className="block w-full h-full object-contain"
                       />
+                      
+                      {/* 原图 (上层，通过 clip-path 裁剪) */}
+                      <div
+                        className="absolute inset-0"
+                        style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}
+                      >
+                        <img
+                          src={selectedImage}
+                          alt="Original"
+                          className="block w-full h-full object-contain"
+                        />
+                        {/* 分割线 */}
+                        <div className="absolute right-0 top-0 bottom-0 w-1 bg-white shadow-[0_0_10px_rgba(0,0,0,0.5)]"></div>
+                      </div>
+
+                      {/* 滑块把手 */}
+                      <div
+                        className="absolute top-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow-xl flex items-center justify-center text-indigo-600 z-20 pointer-events-none transform transition-transform group-hover:scale-110"
+                        style={{ left: `calc(${sliderPosition}% - 20px)` }}
+                      >
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                      </div>
+
+                      <div className="absolute bottom-4 left-4 bg-black/50 backdrop-blur px-3 py-1 rounded text-xs font-bold text-white/80">原图</div>
+                      <div className="absolute bottom-4 right-4 bg-indigo-600/80 backdrop-blur px-3 py-1 rounded text-xs font-bold text-white">修复后</div>
                     </div>
 
-                    {/* 滑块控制 */}
-                    <div
-                      className="slider-handle"
-                      style={{ left: `${sliderPosition}%` }}
-                    ></div>
-
-                    {/* 标签 */}
-                    <div className="absolute top-4 left-4 glass px-4 py-2 rounded-lg text-sm font-semibold">
-                      原图
-                    </div>
-                    <div className="absolute top-4 right-4 glass px-4 py-2 rounded-lg text-sm font-semibold">
-                      处理后
+                    <div className="flex justify-center">
+                      <a
+                        href={processedImage}
+                        download="clean_image.png"
+                        target="_blank"
+                        className="glass px-8 py-3 rounded-xl font-bold hover:bg-white/10 hover:text-white transition-all flex items-center gap-2"
+                      >
+                        <Download className="w-5 h-5" /> 下载高清原图
+                      </a>
                     </div>
                   </div>
-
-                  {/* 下载按钮 */}
-                  <div className="mt-6 flex justify-center">
-                    <a
-                      href={processedImage}
-                      download="clean_image.png"
-                      target="_blank"
-                      className="glass-strong px-8 py-4 rounded-xl font-semibold flex items-center gap-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-600 hover:to-purple-700 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all"
-                    >
-                      <Download className="w-5 h-5" />
-                      <span>下载原图</span>
-                    </a>
-                  </div>
-                </div>
-              ) : (
-                <div className="w-full aspect-[4/3] glass rounded-2xl flex flex-col items-center justify-center relative overflow-hidden">
-                  {isProcessing && (
-                    <>
-                      <div className="scan-line"></div>
-                      <div className="absolute inset-0 bg-gradient-to-b from-indigo-500/10 via-transparent to-purple-500/10"></div>
-                    </>
-                  )}
-                  
-                  <div className="text-center z-10">
+                ) : (
+                  <div className="text-center py-12">
                     {isProcessing ? (
-                      <>
-                        <Loader2 className="w-16 h-16 mx-auto mb-6 text-indigo-400 animate-spin" />
-                        <p className="text-xl font-semibold mb-2 loading-text">
+                      <div className="space-y-4">
+                        <div className="relative w-20 h-20 mx-auto">
+                          <div className="absolute inset-0 rounded-full border-4 border-white/10"></div>
+                          <div className="absolute inset-0 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin"></div>
+                        </div>
+                        <p className="text-lg font-medium text-indigo-300 animate-pulse">
                           {loadingMessages[loadingMessageIndex]}
                         </p>
-                        <p className="text-sm text-neutral-500">
-                          请稍候，AI 正在努力处理中...
-                        </p>
-                      </>
+                      </div>
                     ) : (
-                      <>
-                        <ImageIcon className="w-16 h-16 mx-auto mb-4 text-neutral-600 opacity-30" />
-                        <p className="text-neutral-500 text-lg">等待处理...</p>
-                      </>
+                      <div className="text-neutral-500 flex flex-col items-center">
+                        <ImageIcon className="w-16 h-16 mb-4 opacity-20" />
+                        <p>处理结果将在这里显示</p>
+                      </div>
                     )}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         )}
