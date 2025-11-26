@@ -33,9 +33,14 @@ export default function WatermarkRemover() {
   // 新增：图片加载状态，确保画板在图片撑开容器后再渲染
   const [imageLoaded, setImageLoaded] = useState(false);
   
+  // 新增：图片尺寸和画布准备状态
+  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
+  const [isCanvasReady, setIsCanvasReady] = useState(false);
+  
   const canvasRef = useRef<ReactSketchCanvasRef | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
     if (isProcessing) {
@@ -50,9 +55,20 @@ export default function WatermarkRemover() {
     if (file && file.type.startsWith('image/')) {
       const reader = new FileReader();
       reader.onload = (event) => {
-        setSelectedImage(event.target?.result as string);
+        const imageUrl = event.target?.result as string;
+        setSelectedImage(imageUrl);
         setProcessedImage(null);
+        setIsCanvasReady(false);
         setImageLoaded(false); // 重置加载状态
+        
+        // 获取图片尺寸
+        const img = new Image();
+        img.onload = () => {
+          setImageDimensions({ width: img.width, height: img.height });
+          setIsCanvasReady(true);
+          setImageLoaded(true); // 设置图片加载完成
+        };
+        img.src = imageUrl;
       };
       reader.readAsDataURL(file);
     }
@@ -129,6 +145,8 @@ export default function WatermarkRemover() {
     setIsProcessing(false);
     setSliderPosition(50);
     setImageLoaded(false);
+    setImageDimensions({ width: 0, height: 0 });
+    setIsCanvasReady(false);
   };
 
   // 滑块控制逻辑
@@ -259,21 +277,19 @@ export default function WatermarkRemover() {
                   
                   {/* 蒙版层 - 绝对定位覆盖在图片上 */}
                   <div className="absolute inset-0 z-10 opacity-70 cursor-crosshair">
-                    {isCanvasReady && imageLoaded && (
+                    {imageLoaded && (
                       <ReactSketchCanvas
                         ref={canvasRef}
                         strokeWidth={brushSize}
                         strokeColor="white" // 遮罩颜色，白色代表选中
                         canvasColor="transparent"
-                        width={imageDimensions.width.toString()}
-                        height={imageDimensions.height.toString()}
+                        width={"100%"}
+                        height={"100%"}
                         className="w-full h-full"
                         style={{ 
                           border: 'none',
                           cursor: 'crosshair'
                         }}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
                       />
                     )}
                   </div>
