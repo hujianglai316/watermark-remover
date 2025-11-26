@@ -30,6 +30,9 @@ export default function WatermarkRemover() {
   const [sliderPosition, setSliderPosition] = useState(50);
   const [isDraggingSlider, setIsDraggingSlider] = useState(false);
   
+  // 新增：图片加载状态，确保画板在图片撑开容器后再渲染
+  const [imageLoaded, setImageLoaded] = useState(false);
+  
   const canvasRef = useRef<ReactSketchCanvasRef | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
@@ -49,6 +52,7 @@ export default function WatermarkRemover() {
       reader.onload = (event) => {
         setSelectedImage(event.target?.result as string);
         setProcessedImage(null);
+        setImageLoaded(false); // 重置加载状态
       };
       reader.readAsDataURL(file);
     }
@@ -124,6 +128,7 @@ export default function WatermarkRemover() {
     setProcessedImage(null);
     setIsProcessing(false);
     setSliderPosition(50);
+    setImageLoaded(false);
   };
 
   // 滑块控制逻辑
@@ -156,14 +161,12 @@ export default function WatermarkRemover() {
 
   return (
     <div className="min-h-screen text-neutral-200 font-sans relative selection:bg-indigo-500/30">
-      {/* 背景 */}
       <div className="gradient-bg pointer-events-none">
         <div className="gradient-orb"></div>
         <div className="gradient-orb"></div>
         <div className="gradient-orb"></div>
       </div>
 
-      {/* 导航 */}
       <header className="glass sticky top-0 z-50 border-b border-white/10">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3 select-none">
@@ -182,7 +185,6 @@ export default function WatermarkRemover() {
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-12 relative z-10">
-        {/* 1. 上传区域 */}
         {!selectedImage && (
           <div
             className={`glass-strong rounded-3xl min-h-[60vh] flex flex-col items-center justify-center relative overflow-hidden transition-all duration-300 cursor-pointer border-2 ${
@@ -202,15 +204,12 @@ export default function WatermarkRemover() {
               onChange={handleFileInputChange}
               className="hidden"
             />
-            
             {isDragging && <div className="scan-line"></div>}
-            
             <div className={`w-24 h-24 glass rounded-3xl flex items-center justify-center mb-8 transition-all duration-500 ${
               isDragging ? 'scale-110 rotate-12' : 'group-hover:scale-105'
             }`}>
               <Upload className={`w-10 h-10 ${isDragging ? 'text-indigo-400' : 'text-neutral-400'}`} />
             </div>
-            
             <h2 className="text-2xl md:text-3xl font-bold mb-3 text-white">
               {isDragging ? '松开即可上传' : '点击或拖拽上传图片'}
             </h2>
@@ -218,11 +217,8 @@ export default function WatermarkRemover() {
           </div>
         )}
 
-        {/* 2. 编辑与结果区域 */}
         {selectedImage && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-500">
-            
-            {/* 编辑器卡片 */}
             <div className="glass-strong rounded-3xl p-6 border border-white/10">
               <div className="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4">
                 <h3 className="text-xl font-semibold flex items-center gap-3">
@@ -245,34 +241,46 @@ export default function WatermarkRemover() {
                 </div>
               </div>
 
-              {/* 核心修复区：图片与Canvas容器 */}
-              {/* 关键修改：使用 inline-block 或 flex 让容器尺寸完全贴合图片尺寸 */}
-              <div className="relative w-full flex justify-center bg-black/20 rounded-2xl overflow-hidden border border-white/5">
-                <div className="relative inline-block max-w-full">
+              {/* 核心修复区：这里是重点修改的地方
+                1. inline-block: 容器大小由图片撑开
+                2. onLoad: 图片加载完再设置 imageLoaded=true
+                3. conditional rendering: 画板只有在 imageLoaded 为 true 时才渲染
+              */}
+              <div className="relative w-full flex justify-center bg-black/20 rounded-2xl overflow-hidden border border-white/5 p-1">
+                <div className="relative inline-block max-w-full align-middle">
                   {/* 底图 */}
                   <img
                     src={selectedImage}
                     alt="Original"
-                    className="block max-h-[70vh] w-auto object-contain select-none"
+                    onLoad={() => setImageLoaded(true)} // 关键：图片加载完通知React
+                    className="block max-h-[70vh] w-auto object-contain pointer-events-none select-none" 
                     draggable={false}
                   />
                   
-                  {/* 蒙版层 - 绝对定位覆盖在图片上 */}
-                  {/* 关键修复：移除了 pointer-events-none */}
-                  <div className="absolute inset-0 z-10 opacity-70 cursor-crosshair">
-                    <ReactSketchCanvas
-                      ref={canvasRef}
-                      strokeWidth={brushSize}
-                      strokeColor="white" // 遮罩颜色，白色代表选中
-                      canvasColor="transparent"
-                      className="w-full h-full"
-                      style={{ border: 'none' }}
-                    />
-                  </div>
+                  {/* 蒙版层 - 仅当图片加载完成后渲染 */}
+                  {imageLoaded && (
+                    <div className="absolute inset-0 z-10 cursor-crosshair touch-none">
+                      <ReactSketchCanvas
+                        ref={canvasRef}
+                        width="100%"  // 强制宽高
+                        height="100%"
+                        strokeWidth={brushSize}
+                        strokeColor="white"
+                        canvasColor="transparent"
+                        style={{ border: 'none' }}
+                      />
+                    </div>
+                  )}
+                  
+                  {/* 加载中占位符 */}
+                  {!imageLoaded && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20">
+                      <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* 底部工具栏 */}
               <div className="mt-6 glass p-4 rounded-2xl flex flex-col sm:flex-row items-center gap-6">
                 <div className="flex-1 w-full sm:w-auto">
                   <div className="flex justify-between mb-2 text-xs font-medium text-neutral-400 uppercase tracking-wider">
@@ -290,9 +298,9 @@ export default function WatermarkRemover() {
                 </div>
                 <button
                   onClick={handleRemoveWatermark}
-                  disabled={isProcessing}
+                  disabled={isProcessing || !imageLoaded}
                   className={`w-full sm:w-auto px-8 py-3.5 rounded-xl font-bold text-white shadow-lg flex items-center justify-center gap-2 transition-all transform active:scale-95 ${
-                    isProcessing
+                    isProcessing || !imageLoaded
                       ? 'bg-neutral-700 cursor-wait opacity-80'
                       : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 hover:shadow-indigo-500/25'
                   }`}
@@ -312,7 +320,6 @@ export default function WatermarkRemover() {
               </div>
             </div>
 
-            {/* 结果展示区 */}
             <div className="glass-strong rounded-3xl p-6 border border-white/10 min-h-[300px] flex flex-col">
               <h3 className="text-xl font-semibold mb-6 flex items-center gap-3">
                 <div className="w-2 h-8 bg-gradient-to-b from-emerald-400 to-teal-600 rounded-full"></div>
@@ -322,21 +329,17 @@ export default function WatermarkRemover() {
               <div className="flex-1 flex items-center justify-center">
                 {processedImage ? (
                   <div className="w-full space-y-6">
-                    {/* 对比滑块 */}
                     <div
                       ref={sliderRef}
                       className="relative w-full max-h-[70vh] aspect-auto rounded-2xl overflow-hidden cursor-ew-resize group select-none shadow-2xl"
                       onMouseDown={handleSliderMouseDown}
-                      onTouchStart={() => setIsDraggingSlider(true)} // 支持触摸
+                      onTouchStart={() => setIsDraggingSlider(true)}
                     >
-                      {/* 处理后图片 (底层) */}
                       <img
                         src={processedImage}
                         alt="Processed"
                         className="block w-full h-full object-contain"
                       />
-                      
-                      {/* 原图 (上层，通过 clip-path 裁剪) */}
                       <div
                         className="absolute inset-0"
                         style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}
@@ -346,22 +349,17 @@ export default function WatermarkRemover() {
                           alt="Original"
                           className="block w-full h-full object-contain"
                         />
-                        {/* 分割线 */}
                         <div className="absolute right-0 top-0 bottom-0 w-1 bg-white shadow-[0_0_10px_rgba(0,0,0,0.5)]"></div>
                       </div>
-
-                      {/* 滑块把手 */}
                       <div
                         className="absolute top-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow-xl flex items-center justify-center text-indigo-600 z-20 pointer-events-none transform transition-transform group-hover:scale-110"
                         style={{ left: `calc(${sliderPosition}% - 20px)` }}
                       >
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
                       </div>
-
                       <div className="absolute bottom-4 left-4 bg-black/50 backdrop-blur px-3 py-1 rounded text-xs font-bold text-white/80">原图</div>
                       <div className="absolute bottom-4 right-4 bg-indigo-600/80 backdrop-blur px-3 py-1 rounded text-xs font-bold text-white">修复后</div>
                     </div>
-
                     <div className="flex justify-center">
                       <a
                         href={processedImage}
